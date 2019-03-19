@@ -1,1 +1,0 @@
-new post template for org-mode
