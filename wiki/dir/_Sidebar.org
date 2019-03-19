@@ -1,1 +1,1 @@
-# dir/sidebar
+org-sidebar under /dir
