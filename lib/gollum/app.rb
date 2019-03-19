@@ -30,7 +30,7 @@ class String
   # _Header => header which causes errors
   def to_url
     return nil if self.nil?
-    upstream_to_url :exclude => ['_Header', '_Footer', '_Sidebar'], :force_downcase => false
+    upstream_to_url :exclude => ['_Header', '_Footer', '_Sidebar', '_Template'], :force_downcase => false
   end
 end
 
@@ -330,6 +330,8 @@ module Precious
         page_dir = settings.wiki_options[:page_file_dir].to_s
         redirect to("/#{clean_url(::File.join(page_dir, page.escaped_url_path))}")
       else
+        template_page = load_template_page(wikip.wiki)
+        @content = template_page.raw_data if template_page
         mustache :create
       end
     end
@@ -587,6 +589,35 @@ module Precious
           (settings.wiki_options[:per_page_uploads] ?
               "#{path}/#{@name}".sub(/^\/\//, '') : 'uploads'
           ) : ''
+    end
+
+    def load_template_page(wiki)
+      map ||= wiki.tree_map_for(wiki.ref, true)
+      # From Ruby 2.2 onwards map.select! could be used
+      map = map.select{|entry| entry.name =~ /^_Template/ }
+
+      page_dir = settings.wiki_options[:page_file_dir].to_s
+
+      dir = ::Pathname.new(page_dir + @path)
+
+      loop do
+        templateblob = map.find do |blob_entry|
+          filename = "_Template"
+          searchpath = dir == Pathname.new('.') ? Pathname.new(filename) : dir + filename
+          entrypath = ::Pathname.new(blob_entry.path)
+          # Ignore extentions
+          entrypath = entrypath.dirname + entrypath.basename(entrypath.extname)
+          entrypath == searchpath
+        end
+
+        if templateblob
+          template_page =  templateblob.page(wiki, templateblob.sha)
+          return template_page
+        end
+
+        break if dir == Pathname.new('.')
+        dir = dir.parent
+      end
     end
   end
 end
